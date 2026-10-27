@@ -18,7 +18,7 @@
 DEFINE_string(host, "127.0.0.1:10000", "echo 服务地址 host:port");
 DEFINE_string(msg, "hello", "要发送的消息");
 DEFINE_bool(run_mode, false, "运行模式");
-DEFINE_string(log_file, "logs/echo_client.log", "发布模式下的日志文件");
+DEFINE_string(log_dir, "logs/echo_client", "发布模式下的日志目录（按天生成 YYYY-MM-DD.log）");
 DEFINE_int32(log_level, 0, "日志等级");
 
 /**
@@ -27,7 +27,7 @@ DEFINE_int32(log_level, 0, "日志等级");
  */
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    im::init_logger(FLAGS_run_mode, FLAGS_log_file, FLAGS_log_level);
+    im::init_logger(FLAGS_run_mode, FLAGS_log_dir, FLAGS_log_level);
 
     brpc::Channel channel;
     brpc::ChannelOptions options;
