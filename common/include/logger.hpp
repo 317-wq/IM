@@ -5,8 +5,8 @@
  * 统一日志格式：
  *   [级别][YYYY-MM-DD HH:MM:SS][源文件绝对路径:行号] 消息
  *
- * 其他模块只通过 IM_TRACE/IM_DEBUG/IM_INFO/IM_WARN/IM_ERROR/IM_FATAL 宏打日志，
- * 既能保证格式一致，又能自动带上调用点的文件与行号（依赖 spdlog 的 source_loc）。
+ * 发布模式按天落盘：<log_dir>/<YYYY-MM-DD>.log（由 DailyFileSink 实现）。
+ * 其他模块只通过 IM_TRACE/IM_DEBUG/IM_INFO/IM_WARN/IM_ERROR/IM_FATAL 宏打日志。
  */
 
 #pragma once
@@ -61,13 +61,13 @@ public:
  * @brief 初始化全局日志器。
  *
  * @param release_mode false：调试模式，输出到控制台（彩色），级别 trace
- *                     true ：发布模式，输出到文件，级别由 level 指定
- * @param file  发布模式下的日志文件路径（调试模式忽略）
- * @param level 发布模式日志级别：0 trace / 1 debug / 2 info / 3 warn / 4 error / 5 critical
+ *                     true ：发布模式，按天写入 log_dir/<YYYY-MM-DD>.log
+ * @param log_dir 发布模式下的日志目录，如 "logs/echo"（调试模式忽略）
+ * @param level   发布模式日志级别：0 trace / 1 debug / 2 info / 3 warn / 4 error / 5 critical
  *
  * 注意：必须在创建任何线程之前调用。
  */
-void init_logger(bool release_mode, const std::string& file, int level);
+void init_logger(bool release_mode, const std::string& log_dir, int level);
 
 } // namespace im
 
