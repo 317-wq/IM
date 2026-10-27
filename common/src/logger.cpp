@@ -10,8 +10,9 @@
 #include <string_view>
 
 #include <spdlog/fmt/fmt.h>
-#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+#include "daily_file_sink.hpp"
 
 namespace im {
 
@@ -74,16 +75,18 @@ std::unique_ptr<spdlog::formatter> LineFormatter::clone() const {
 } // namespace detail
 
 /**
- * @brief 实现初始化：按模式创建控制台或文件日志器，并安装统一格式化器。
+ * @brief 实现初始化：调试模式走控制台，发布模式走按天滚动的文件 sink。
  */
-void init_logger(bool release_mode, const std::string& file, int level) {
+void init_logger(bool release_mode, const std::string& log_dir, int level) {
     std::shared_ptr<spdlog::logger> l;
+
     if (!release_mode) {
         l = spdlog::stdout_color_mt("im");
         l->set_level(spdlog::level::trace);
         l->flush_on(spdlog::level::trace);
     } else {
-        l = spdlog::basic_logger_mt("im", file);
+        auto sink = std::make_shared<DailyFileSink>(log_dir);
+        l = std::make_shared<spdlog::logger>("im", sink);
         auto lv = static_cast<spdlog::level::level_enum>(level);
         l->set_level(lv);
         l->flush_on(lv);
