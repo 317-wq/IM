@@ -1,0 +1,13 @@
+# 第三方源码目录，不纳入版本管理
+third_party/
+
+# CMake 构建产物
+build/
+compile_commands.json
+
+# 运行期日志与文件服务数据，仅保留目录占位
+logs/*
+!logs/.gitkeep
+data/*
+!data/.gitkeep
+*.log
