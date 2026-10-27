@@ -1,17 +1,19 @@
 /**
  * @file echo_server.cpp
- * @brief M0 示例服务：验证 protoc 生成代码、brpc 服务端与统一日志是否打通。
+ * @brief M0 回显服务实现与程序入口。
  *
- * 这里只有一个 Echo 接口，不承载业务；目的是先把「构建 → 生成 → 起服务 → 客户端调用」
- * 这条最小闭环跑通，后续里程碑的新服务都复用同一套骨架。
+ * 类声明在 echo_server.hpp，这里只放接口实现和 main()；
+ * 目的是先把「构建 → protoc 生成 → 起服务 → 客户端调用」这条最小闭环跑通，
+ * 后续里程碑的新服务都复用同一套骨架。
  */
+
+#include "echo_server.hpp"
 
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
 #include "common/logger.hpp"
 #include "common/utils.hpp"
-#include "echo.pb.h"
 
 // 运行参数：既可直接命令行传，也可用 -flagfile=conf/echo.conf 批量指定
 DEFINE_bool(run_mode, false, "运行模式：false-调试（控制台），true-发布（文件）");
@@ -22,29 +24,17 @@ DEFINE_int32(port, 10000, "RPC 监听端口");
 namespace im {
 
 /**
- * @brief Echo 服务的实现类。
- *
- * 只做一件事：把客户端发来的文本加上 "echo: " 前缀回显，
- * 并带上服务端当前毫秒时间戳，方便调用方确认请求确实到达了服务端。
+ * @brief 实现 Echo：回显文本 + 返回服务端毫秒时间戳。
  */
-class EchoServiceImpl : public EchoService {
-public:
-    /**
-     * @brief 处理一次 Echo 调用。
-     * @param request  客户端请求（message 为待回显文本）
-     * @param response 响应（message 为回显内容，server_time_ms 为服务端时间）
-     * @param done     brpc 的完成回调；ClosureGuard 保证离开作用域时一定被调用
-     */
-    void Echo(google::protobuf::RpcController* /*controller*/,
-              const EchoRequest* request,
-              EchoResponse* response,
-              google::protobuf::Closure* done) override {
-        brpc::ClosureGuard done_guard(done);
-        response->set_message("echo: " + request->message());
-        response->set_server_time_ms(now_ms());
-        IM_DEBUG("handle echo, msg={}", request->message());
-    }
-};
+void EchoServiceImpl::Echo(google::protobuf::RpcController* /*controller*/,
+                           const EchoRequest* request,
+                           EchoResponse* response,
+                           google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_message("echo: " + request->message());
+    response->set_server_time_ms(now_ms());
+    IM_DEBUG("handle echo, msg={}", request->message());
+}
 
 } // namespace im
 
