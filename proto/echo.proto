@@ -1,0 +1,25 @@
+// M0 示例接口：验证 protoc 生成、brpc 服务端/客户端与构建系统是否打通。
+// 这里故意只放一个最简单的 Echo，不承载任何业务逻辑；
+// 后续里程碑的 user/friend/message 等接口会按领域拆到各自的 proto 文件。
+
+syntax = "proto3";
+
+package im;
+
+option cc_generic_services = true;
+
+// Echo 请求：客户端要回显的文本
+message EchoRequest {
+    string message = 1;
+}
+
+// Echo 响应：回显内容 + 服务端处理时间（毫秒时间戳，用于确认请求确实到了服务端）
+message EchoResponse {
+    string message        = 1;
+    int64  server_time_ms = 2;
+}
+
+// 回显服务：仅用于 M0 的连通性验证
+service EchoService {
+    rpc Echo(EchoRequest) returns (EchoResponse);
+}
