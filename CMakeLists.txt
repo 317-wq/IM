@@ -56,9 +56,10 @@ target_link_libraries(im_deps INTERFACE
 # 公共基础设施库：声明放 .hpp，实现放 .cpp，供所有服务复用
 # ---------------------------------------------------------------------------
 add_library(im_common STATIC
-    common/logger.cpp
-    common/utils.cpp
+    common/src/logger.cpp
+    common/src/utils.cpp
 )
+target_include_directories(im_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_common PUBLIC im_deps)
 
 # ---------------------------------------------------------------------------
