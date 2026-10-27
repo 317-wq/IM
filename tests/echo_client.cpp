@@ -11,7 +11,7 @@
 #include <brpc/channel.h>
 #include <gflags/gflags.h>
 
-#include "common/logger.hpp"
+#include "logger.hpp"
 #include "echo.pb.h"
 
 // 连接参数：默认连本机 10000 端口，可通过命令行或 flagfile 覆盖
