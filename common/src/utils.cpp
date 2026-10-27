@@ -3,7 +3,7 @@
  * @brief 公共工具函数实现：时间戳与唯一 ID。
  */
 
-#include "common/utils.hpp"
+#include "utils.hpp"
 
 #include <atomic>
 #include <chrono>
