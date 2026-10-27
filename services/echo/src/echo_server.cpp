@@ -12,8 +12,8 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
-#include "common/logger.hpp"
-#include "common/utils.hpp"
+#include "logger.hpp"
+#include "utils.hpp"
 
 // 运行参数：既可直接命令行传，也可用 -flagfile=conf/echo.conf 批量指定
 DEFINE_bool(run_mode, false, "运行模式：false-调试（控制台），true-发布（文件）");
