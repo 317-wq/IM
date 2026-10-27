@@ -57,6 +57,7 @@ target_link_libraries(im_deps INTERFACE
 # ---------------------------------------------------------------------------
 add_library(im_common STATIC
     common/src/logger.cpp
+    common/src/daily_file_sink.cpp
     common/src/utils.cpp
 )
 target_include_directories(im_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
