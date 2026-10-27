@@ -17,7 +17,7 @@
 
 // 运行参数：既可直接命令行传，也可用 -flagfile=conf/echo.conf 批量指定
 DEFINE_bool(run_mode, false, "运行模式：false-调试（控制台），true-发布（文件）");
-DEFINE_string(log_file, "logs/echo.log", "发布模式下的日志文件");
+DEFINE_string(log_dir, "logs/echo", "发布模式下的日志目录（按天生成 YYYY-MM-DD.log）");
 DEFINE_int32(log_level, 0, "日志等级：0 trace / 1 debug / 2 info / 3 warn / 4 error");
 DEFINE_int32(port, 10000, "RPC 监听端口");
 
@@ -43,7 +43,7 @@ void EchoServiceImpl::Echo(google::protobuf::RpcController* /*controller*/,
  */
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    im::init_logger(FLAGS_run_mode, FLAGS_log_file, FLAGS_log_level);
+    im::init_logger(FLAGS_run_mode, FLAGS_log_dir, FLAGS_log_level);
 
     brpc::Server server;
     im::EchoServiceImpl service;
