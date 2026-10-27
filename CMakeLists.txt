@@ -4,7 +4,8 @@
 #   1. 声明 C++17 与输出目录（可执行文件统一放到 build/bin）
 #   2. 查找公共依赖（brpc / protobuf / gflags / spdlog / fmt / openssl / zlib）
 #   3. 引入 protoc 生成辅助函数，并把 proto 编译成 im_proto 静态库
-#   4. 按服务注册子目录（后续里程碑继续往下加 add_subdirectory）
+#   4. 编译公共基础设施库 im_common（日志、工具等）
+#   5. 按服务注册子目录（后续里程碑继续往下加 add_subdirectory）
 
 cmake_minimum_required(VERSION 3.20)
 project(im LANGUAGES CXX)
@@ -50,6 +51,15 @@ target_link_libraries(im_deps INTERFACE
     ZLIB::ZLIB
     dl
 )
+
+# ---------------------------------------------------------------------------
+# 公共基础设施库：声明放 .hpp，实现放 .cpp，供所有服务复用
+# ---------------------------------------------------------------------------
+add_library(im_common STATIC
+    common/logger.cpp
+    common/utils.cpp
+)
+target_link_libraries(im_common PUBLIC im_deps)
 
 # ---------------------------------------------------------------------------
 # 接口定义：当前只有 M0 的 echo，后续按里程碑逐个加入
