@@ -2,6 +2,7 @@
  * @file db_user_test.cpp
  * @brief M2 验收程序：验证 user 实体的插入、查询、更新与唯一约束。
  *
+ * M3 起改为 account 登录：account 唯一，nickname 不要求唯一。
  * 运行前需要先执行 sql/user.sql 建库建表；密码可通过 -mysql_password
  * 或环境变量 IM_MYSQL_PASSWORD 传入（避免写进代码/配置）。
  */
@@ -48,7 +49,7 @@ void check(bool ok, const std::string& what) {
 } // namespace
 
 /**
- * @brief 测试入口：插入 -> 两种查询 -> 更新 -> 重复昵称插入失败。
+ * @brief 测试入口：插入 -> 查询 -> 更新 -> account 唯一 / nickname 可重复。
  */
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -68,18 +69,20 @@ int main(int argc, char* argv[]) {
                                      FLAGS_mysql_pool);
     im::UserDao dao(db);
 
-    const std::string nickname = "test_" + im::uuid().substr(0, 8);
+    const std::string suffix = im::uuid().substr(0, 8);
+    const std::string account = "acc_" + suffix;
+    const std::string nickname = "nick_" + suffix;
     const std::string user_id = im::uuid();
 
-    im::User user(user_id, nickname, "hash-placeholder", "salt-placeholder");
+    im::User user(user_id, account, nickname, "hash-placeholder", "salt-placeholder");
     check(dao.insert(user), "插入新用户");
     check(user.id() != 0, "插入后主键已回填");
 
-    auto by_nickname = dao.findByNickname(nickname);
-    check(by_nickname != nullptr, "按昵称查询到用户");
-    if (by_nickname) {
-        check(by_nickname->user_id() == user_id, "昵称查询的 user_id 一致");
-        check(by_nickname->password_hash() == "hash-placeholder", "密码哈希一致");
+    auto by_account = dao.findByAccount(account);
+    check(by_account != nullptr, "按 account 查询到用户");
+    if (by_account) {
+        check(by_account->user_id() == user_id, "account 查询的 user_id 一致");
+        check(by_account->password_hash() == "hash-placeholder", "密码哈希一致");
     }
 
     auto by_id = dao.findByUserId(user_id);
@@ -92,8 +95,11 @@ int main(int argc, char* argv[]) {
         check(updated != nullptr && updated->description() == "hello im", "签名更新生效");
     }
 
-    im::User duplicate(im::uuid(), nickname, "hash2", "salt2");
-    check(!dao.insert(duplicate), "重复昵称插入被拒绝");
+    im::User duplicate_account(im::uuid(), account, "another_nick", "hash2", "salt2");
+    check(!dao.insert(duplicate_account), "重复 account 插入被拒绝");
+
+    im::User same_nickname(im::uuid(), "acc2_" + suffix, nickname, "hash3", "salt3");
+    check(dao.insert(same_nickname), "昵称重复允许插入（仅展示）");
 
     std::printf("%s\n", failures == 0 ? "ALL PASS" : "SOME FAILED");
     return failures == 0 ? 0 : 1;
