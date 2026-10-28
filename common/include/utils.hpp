@@ -1,6 +1,6 @@
 /**
  * @file utils.hpp
- * @brief 公共工具函数声明：时间戳与唯一 ID（实现见 common/utils.cpp）。
+ * @brief 公共工具函数声明：时间戳、唯一 ID、文件读写（实现见 common/src/utils.cpp）。
  */
 
 #pragma once
@@ -31,5 +31,21 @@ int64_t now_s();
  * @return 形如 "3f2a1b4c-8d5e-0001-a7c9-1e2f3a4b5c6d" 的字符串
  */
 std::string uuid();
+
+/**
+ * @brief 读取整个文件内容（二进制）。
+ * @param path 文件路径
+ * @param body 输出：文件内容
+ * @return 打开或读取失败返回 false
+ */
+bool readFile(const std::string& path, std::string& body);
+
+/**
+ * @brief 把内容整体写入文件（二进制，覆盖写）。
+ * @param path 文件路径
+ * @param body 要写入的内容
+ * @return 打开或写入失败返回 false
+ */
+bool writeFile(const std::string& path, const std::string& body);
 
 } // namespace im
