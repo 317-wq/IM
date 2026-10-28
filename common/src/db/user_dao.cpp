@@ -28,7 +28,7 @@ bool UserDao::insert(User& user) {
         trans.commit();
         return true;
     } catch (const std::exception& e) {
-        IM_ERROR("insert user {} failed: {}", user.nickname(), e.what());
+        IM_ERROR("insert user {} failed: {}", user.account(), e.what());
         return false;
     }
 }
@@ -65,17 +65,17 @@ std::shared_ptr<User> UserDao::findByUserId(const std::string& user_id) {
 }
 
 /**
- * @brief 实现按昵称查询。
+ * @brief 实现按 account 查询。
  */
-std::shared_ptr<User> UserDao::findByNickname(const std::string& nickname) {
+std::shared_ptr<User> UserDao::findByAccount(const std::string& account) {
     try {
         odb::transaction trans(db_->begin());
         typedef odb::query<User> query;
-        std::shared_ptr<User> user(db_->query_one<User>(query::nickname == nickname));
+        std::shared_ptr<User> user(db_->query_one<User>(query::account == account));
         trans.commit();
         return user;
     } catch (const std::exception& e) {
-        IM_ERROR("query user by nickname {} failed: {}", nickname, e.what());
+        IM_ERROR("query user by account {} failed: {}", account, e.what());
         return nullptr;
     }
 }
