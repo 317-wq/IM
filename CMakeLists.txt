@@ -2,9 +2,9 @@
 #
 # 职责：
 #   1. 声明 C++17 与输出目录（可执行文件统一放到 build/bin）
-#   2. 查找公共依赖（brpc / protobuf / gflags / spdlog / fmt / openssl / zlib / etcd）
-#   3. 引入 protoc 生成辅助函数，并把 proto 编译成 im_proto 静态库
-#   4. 编译公共基础设施库 im_common（日志、工具、etcd、信道管理等）
+#   2. 查找公共依赖（brpc / protobuf / gflags / spdlog / fmt / openssl / zlib / etcd / odb）
+#   3. 引入 protoc 与 ODB 生成辅助函数
+#   4. 编译公共基础设施库 im_common、实体库 im_odb、DAO 库 im_db
 #   5. 按服务注册子目录（后续里程碑继续往下加 add_subdirectory）
 
 cmake_minimum_required(VERSION 3.20)
@@ -20,22 +20,26 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # 依赖查找
 # ---------------------------------------------------------------------------
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(BRPC   REQUIRED IMPORTED_TARGET brpc)
-pkg_check_modules(GFLAGS REQUIRED IMPORTED_TARGET gflags)
-pkg_check_modules(SPDLOG REQUIRED IMPORTED_TARGET spdlog)
-pkg_check_modules(FMT    REQUIRED IMPORTED_TARGET fmt)
+pkg_check_modules(BRPC      REQUIRED IMPORTED_TARGET brpc)
+pkg_check_modules(GFLAGS    REQUIRED IMPORTED_TARGET gflags)
+pkg_check_modules(SPDLOG    REQUIRED IMPORTED_TARGET spdlog)
+pkg_check_modules(FMT       REQUIRED IMPORTED_TARGET fmt)
+pkg_check_modules(ODB_MYSQL REQUIRED IMPORTED_TARGET libodb-mysql)
+pkg_check_modules(ODB_BOOST REQUIRED IMPORTED_TARGET libodb-boost)
 
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(etcd-cpp-api REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Proto.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Odb.cmake)
 
 # ---------------------------------------------------------------------------
 # 公共依赖目标：所有服务/测试链接它即可，避免每个 target 重复写一长串库
-# 后续里程碑会往这里补 redis++ / amqp / elasticlient / odb 等
+# 后续里程碑会往这里补 redis++ / amqp / elasticlient 等
 # ---------------------------------------------------------------------------
 add_library(im_deps INTERFACE)
 target_include_directories(im_deps INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -44,6 +48,8 @@ target_link_libraries(im_deps INTERFACE
     PkgConfig::GFLAGS
     PkgConfig::SPDLOG
     PkgConfig::FMT
+    PkgConfig::ODB_MYSQL
+    PkgConfig::ODB_BOOST
     protobuf::libprotobuf
     OpenSSL::SSL
     OpenSSL::Crypto
@@ -52,6 +58,7 @@ target_link_libraries(im_deps INTERFACE
     ZLIB::ZLIB
     dl
     etcd-cpp-api
+    Boost::date_time
 )
 
 # ---------------------------------------------------------------------------
@@ -63,9 +70,24 @@ add_library(im_common STATIC
     common/src/utils.cpp
     common/src/etcd.cpp
     common/src/channel.cpp
+    common/src/mysql.cpp
 )
 target_include_directories(im_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_common PUBLIC im_deps)
+
+# ---------------------------------------------------------------------------
+# ODB 实体与 DAO
+# ---------------------------------------------------------------------------
+im_add_odb_lib(im_odb
+    ODB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/odb
+    FILES user.hxx
+)
+
+add_library(im_db STATIC
+    common/src/db/user_dao.cpp
+)
+target_include_directories(im_db PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
+target_link_libraries(im_db PUBLIC im_odb im_common)
 
 # ---------------------------------------------------------------------------
 # 接口定义：按里程碑逐个加入
