@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
     }
 
     brpc::ServerOptions options;
-    options.num_threads = 4;
+    options.num_threads = 9;
     if (server.Start(FLAGS_port, &options) != 0) {
         IM_FATAL("start server on port {} failed", FLAGS_port);
         return -1;
