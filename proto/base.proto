@@ -1,0 +1,15 @@
+// 公共数据结构：跨服务复用的用户信息等。
+
+syntax = "proto3";
+
+package im;
+
+option cc_generic_services = true;
+
+// 用户公开信息：其他服务返回用户时统一使用该结构
+message UserInfo {
+    string user_id     = 1;
+    string nickname    = 2;
+    string description = 3;   // 个人签名，可为空
+    bytes  avatar      = 4;   // 头像文件内容，列表接口可按需留空
+}
