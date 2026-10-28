@@ -2,7 +2,7 @@
 #
 # 职责：
 #   1. 声明 C++17 与输出目录（可执行文件统一放到 build/bin）
-#   2. 查找公共依赖（brpc / protobuf / gflags / spdlog / fmt / openssl / zlib / etcd / odb）
+#   2. 查找公共依赖（brpc / protobuf / gflags / spdlog / fmt / openssl / zlib / etcd / odb / redis）
 #   3. 引入 protoc 与 ODB 生成辅助函数
 #   4. 编译公共基础设施库 im_common、实体库 im_odb、DAO 库 im_db
 #   5. 按服务注册子目录（后续里程碑继续往下加 add_subdirectory）
@@ -26,6 +26,7 @@ pkg_check_modules(SPDLOG    REQUIRED IMPORTED_TARGET spdlog)
 pkg_check_modules(FMT       REQUIRED IMPORTED_TARGET fmt)
 pkg_check_modules(ODB_MYSQL REQUIRED IMPORTED_TARGET libodb-mysql)
 pkg_check_modules(ODB_BOOST REQUIRED IMPORTED_TARGET libodb-boost)
+pkg_check_modules(REDISPP   REQUIRED IMPORTED_TARGET redis++)
 
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
@@ -39,7 +40,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Odb.cmake)
 
 # ---------------------------------------------------------------------------
 # 公共依赖目标：所有服务/测试链接它即可，避免每个 target 重复写一长串库
-# 后续里程碑会往这里补 redis++ / amqp / elasticlient 等
+# 后续里程碑会往这里补 amqp / elasticlient 等
 # ---------------------------------------------------------------------------
 add_library(im_deps INTERFACE)
 target_include_directories(im_deps INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -50,6 +51,7 @@ target_link_libraries(im_deps INTERFACE
     PkgConfig::FMT
     PkgConfig::ODB_MYSQL
     PkgConfig::ODB_BOOST
+    PkgConfig::REDISPP
     protobuf::libprotobuf
     OpenSSL::SSL
     OpenSSL::Crypto
@@ -71,6 +73,8 @@ add_library(im_common STATIC
     common/src/etcd.cpp
     common/src/channel.cpp
     common/src/mysql.cpp
+    common/src/redis.cpp
+    common/src/crypto.cpp
 )
 target_include_directories(im_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_common PUBLIC im_deps)
@@ -95,8 +99,10 @@ target_link_libraries(im_db PUBLIC im_odb im_common)
 im_add_proto_lib(im_proto
     PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto
     PROTOS
+        base.proto
         echo.proto
         file.proto
+        user.proto
 )
 
 # ---------------------------------------------------------------------------
@@ -104,4 +110,5 @@ im_add_proto_lib(im_proto
 # ---------------------------------------------------------------------------
 add_subdirectory(services/echo)
 add_subdirectory(services/file)
+add_subdirectory(services/user)
 add_subdirectory(tests)
