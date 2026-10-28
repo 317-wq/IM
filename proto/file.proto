@@ -1,0 +1,59 @@
+// M1 文件服务接口：上传、单文件下载、多文件下载。
+// 文件 id 由服务端生成（uuid），客户端后续用 id 取回内容。
+
+syntax = "proto3";
+
+package im;
+
+option cc_generic_services = true;
+
+// 上传文件请求
+message PutFileRequest {
+    string request_id = 1;  // 请求唯一标识，用于日志串联
+    string file_name  = 2;  // 原始文件名，仅作展示，服务端不用于存储路径
+    bytes  content    = 3;  // 文件内容
+}
+
+// 上传文件响应
+message PutFileResponse {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    string file_id    = 4;  // 服务端生成的文件 id
+    int64  size       = 5;  // 实际写入字节数
+}
+
+// 下载单个文件请求
+message GetFileRequest {
+    string request_id = 1;
+    string file_id    = 2;
+}
+
+// 下载单个文件响应
+message GetFileResponse {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    bytes  content    = 4;  // 文件内容
+}
+
+// 批量下载请求
+message GetMultiFileRequest {
+    string request_id   = 1;
+    repeated string file_id = 2;
+}
+
+// 批量下载响应：file_id -> 文件内容
+message GetMultiFileResponse {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    map<string, bytes> files = 4;
+}
+
+// 文件服务：负责文件的落盘与读取
+service FileService {
+    rpc PutFile(PutFileRequest) returns (PutFileResponse);
+    rpc GetFile(GetFileRequest) returns (GetFileResponse);
+    rpc GetMultiFile(GetMultiFileRequest) returns (GetMultiFileResponse);
+}
