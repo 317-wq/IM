@@ -97,9 +97,10 @@ ServiceManager::ServiceManager(std::string base_dir)
  * @brief 实现关注声明：只对声明过的服务建立信道。
  */
 void ServiceManager::follow(const std::string& service) {
+    const std::string name = normalize(service);
     std::lock_guard<std::mutex> lock(mutex_);
-    followed_.insert(service);
-    IM_DEBUG("follow service {}", service);
+    followed_.insert(name);
+    IM_DEBUG("follow service {}", name);
 }
 
 /**
@@ -145,13 +146,25 @@ void ServiceManager::onServiceOffline(const std::string& key, const std::string&
  * @brief 实现选择：取出服务对应的 ServiceChannel 再轮询。
  */
 ServiceChannel::ChannelPtr ServiceManager::choose(const std::string& service) {
+    const std::string name = normalize(service);
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = services_.find(service);
+    auto it = services_.find(name);
     if (it == services_.end()) {
-        IM_ERROR("service {} not found", service);
+        IM_ERROR("service {} not found", name);
         return nullptr;
     }
     return it->second->choose();
+}
+
+/**
+ * @brief 实现归一化：允许调用方传短名或带 base_dir 的全路径。
+ */
+std::string ServiceManager::normalize(const std::string& service) const {
+    const std::string prefix = base_dir_ + "/";
+    if (service.compare(0, prefix.size(), prefix) == 0) {
+        return service.substr(prefix.size());
+    }
+    return service;
 }
 
 /**
