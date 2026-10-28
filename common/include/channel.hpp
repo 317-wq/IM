@@ -96,6 +96,11 @@ private:
      */
     std::string serviceName(const std::string& key) const;
 
+    /**
+     * @brief 把服务名统一成短名：/im/service/file 与 file 都转成 file。
+     */
+    std::string normalize(const std::string& service) const;
+
     std::mutex mutex_;
     std::string base_dir_;
     std::set<std::string> followed_;
