@@ -2,8 +2,8 @@
  * @file user.hxx
  * @brief user 表的 ODB 实体声明。
  *
- * 字段与 sql/user.sql 对应；密码只存哈希和盐，不存明文。
- * user_id、nickname 唯一，create_time 使用 boost::posix_time::ptime 映射到 TIMESTAMP。
+ * account 是登录名（唯一、不可变）；nickname 只做展示（可改、不要求唯一）。
+ * 密码只存哈希和盐，不存明文。
  */
 
 #pragma once
@@ -27,9 +27,10 @@ public:
     /**
      * @brief 构造一个新用户；创建时间取当前本地时间。
      */
-    User(std::string user_id, std::string nickname, std::string password_hash,
-         std::string salt)
+    User(std::string user_id, std::string account, std::string nickname,
+         std::string password_hash, std::string salt)
         : _user_id(std::move(user_id)),
+          _account(std::move(account)),
           _nickname(std::move(nickname)),
           _password_hash(std::move(password_hash)),
           _salt(std::move(salt)),
@@ -42,7 +43,11 @@ public:
     const std::string& user_id() const { return _user_id; }
     void user_id(const std::string& value) { _user_id = value; }
 
-    /// 昵称（唯一）
+    /// 登录名（唯一、不可变）
+    const std::string& account() const { return _account; }
+    void account(const std::string& value) { _account = value; }
+
+    /// 展示名（可改、不要求唯一）
     const std::string& nickname() const { return _nickname; }
     void nickname(const std::string& value) { _nickname = value; }
 
@@ -79,7 +84,10 @@ private:
     #pragma db type("varchar(64)") index unique
     std::string _user_id;
 
-    #pragma db type("varchar(64)") index unique
+    #pragma db type("varchar(32)") index unique
+    std::string _account;
+
+    #pragma db type("varchar(64)") index
     std::string _nickname;
 
     #pragma db type("varchar(128)")
