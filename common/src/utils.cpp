@@ -1,12 +1,13 @@
 /**
  * @file utils.cpp
- * @brief 公共工具函数实现：时间戳与唯一 ID。
+ * @brief 公共工具函数实现：时间戳、唯一 ID、文件读写。
  */
 
 #include "utils.hpp"
 
 #include <atomic>
 #include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <random>
 #include <sstream>
@@ -49,6 +50,38 @@ std::string uuid() {
     oss << std::setw(4) << static_cast<uint16_t>((b >> 48) & 0xffffu) << '-';
     oss << std::setw(12) << (b & 0xffffffffffffull);
     return oss.str();
+}
+
+/**
+ * @brief 实现读文件：先定位到末尾取长度，再一次性读入 body。
+ */
+bool readFile(const std::string& path, std::string& body) {
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs.is_open()) {
+        return false;
+    }
+
+    ifs.seekg(0, std::ios::end);
+    const std::streamoff size = ifs.tellg();
+    ifs.seekg(0, std::ios::beg);
+
+    body.resize(static_cast<size_t>(size));
+    if (size > 0) {
+        ifs.read(body.data(), size);
+    }
+    return ifs.good() || ifs.eof();
+}
+
+/**
+ * @brief 实现写文件：截断后整体写入。
+ */
+bool writeFile(const std::string& path, const std::string& body) {
+    std::ofstream ofs(path, std::ios::binary | std::ios::trunc);
+    if (!ofs.is_open()) {
+        return false;
+    }
+    ofs.write(body.data(), static_cast<std::streamsize>(body.size()));
+    return ofs.good();
 }
 
 } // namespace im
