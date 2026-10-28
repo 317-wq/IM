@@ -1,0 +1,124 @@
+// M3 用户服务接口：注册、登录、登出、用户信息读写。
+// 登录使用 account + password；nickname 仅展示，可修改。
+
+syntax = "proto3";
+
+package im;
+
+import "base.proto";
+
+option cc_generic_services = true;
+
+// 注册
+message UserRegisterReq {
+    string request_id = 1;
+    string account    = 2;   // 登录名，注册后不可修改
+    string nickname   = 3;   // 展示名
+    string password   = 4;
+}
+message UserRegisterRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    string user_id    = 4;   // 注册成功后返回
+}
+
+// 登录
+message UserLoginReq {
+    string request_id = 1;
+    string account    = 2;
+    string password   = 3;
+}
+message UserLoginRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    string session_id = 4;   // 登录成功后返回
+}
+
+// 登出
+message UserLogoutReq {
+    string request_id = 1;
+    optional string session_id = 2;
+    optional string user_id    = 3;   // 网关注入
+}
+message UserLogoutRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+}
+
+// 获取当前登录用户信息
+message GetUserInfoReq {
+    string request_id = 1;
+    optional string session_id = 2;
+    optional string user_id    = 3;   // 网关注入
+}
+message GetUserInfoRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    UserInfo user_info = 4;
+}
+
+// 批量获取用户信息（内部接口，不经过网关）
+message GetMultiUserInfoReq {
+    string request_id = 1;
+    repeated string user_ids = 2;
+}
+message GetMultiUserInfoRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    map<string, UserInfo> users = 4;
+}
+
+// 修改昵称
+message SetUserNicknameReq {
+    string request_id = 1;
+    optional string session_id = 2;
+    optional string user_id    = 3;
+    string nickname = 4;
+}
+message SetUserNicknameRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+}
+
+// 修改个人签名
+message SetUserDescriptionReq {
+    string request_id = 1;
+    optional string session_id = 2;
+    optional string user_id    = 3;
+    string description = 4;
+}
+message SetUserDescriptionRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+}
+
+// 修改头像
+message SetUserAvatarReq {
+    string request_id = 1;
+    optional string session_id = 2;
+    optional string user_id    = 3;
+    bytes  avatar = 4;
+}
+message SetUserAvatarRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+}
+
+service UserService {
+    rpc UserRegister(UserRegisterReq) returns (UserRegisterRsp);
+    rpc UserLogin(UserLoginReq) returns (UserLoginRsp);
+    rpc UserLogout(UserLogoutReq) returns (UserLogoutRsp);
+    rpc GetUserInfo(GetUserInfoReq) returns (GetUserInfoRsp);
+    rpc GetMultiUserInfo(GetMultiUserInfoReq) returns (GetMultiUserInfoRsp);
+    rpc SetUserNickname(SetUserNicknameReq) returns (SetUserNicknameRsp);
+    rpc SetUserDescription(SetUserDescriptionReq) returns (SetUserDescriptionRsp);
+    rpc SetUserAvatar(SetUserAvatarReq) returns (SetUserAvatarRsp);
+}
