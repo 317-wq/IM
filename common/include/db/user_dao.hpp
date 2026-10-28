@@ -43,9 +43,9 @@ public:
     std::shared_ptr<User> findByUserId(const std::string& user_id);
 
     /**
-     * @brief 按昵称查询；不存在返回空指针。
+     * @brief 按登录名 account 查询；不存在返回空指针。
      */
-    std::shared_ptr<User> findByNickname(const std::string& nickname);
+    std::shared_ptr<User> findByAccount(const std::string& account);
 
 private:
     std::shared_ptr<odb::core::database> db_;
