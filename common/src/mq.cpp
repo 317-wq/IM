@@ -79,6 +79,8 @@ void MQClient::declareComponents(const std::string& exchange,
 bool MQClient::publish(const std::string& exchange,
                        const std::string& message,
                        const std::string& routing_key) {
+    // AMQP-CPP 的 Channel 不是线程安全的：RPC 线程并发 publish 会偶发失败/重复。
+    std::lock_guard<std::mutex> lock(publish_mutex_);
     if (!channel_->publish(exchange, routing_key, message)) {
         IM_ERROR("publish to {} failed", exchange);
         return false;
