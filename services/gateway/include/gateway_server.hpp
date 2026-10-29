@@ -25,7 +25,10 @@ public:
                   std::shared_ptr<sw::redis::Redis> redis,
                   ServiceManager::Ptr channels,
                   std::string user_service,
-                  std::string message_service);
+                  std::string friend_service,
+                  std::string transmit_service,
+                  std::string message_service,
+                  std::string file_service);
 
     /// 阻塞运行
     void start();
@@ -40,7 +43,10 @@ private:
     std::shared_ptr<SessionStore> sessions_;
     ServiceManager::Ptr channels_;
     std::string user_service_;
+    std::string friend_service_;
+    std::string transmit_service_;
     std::string message_service_;
+    std::string file_service_;
 };
 
 } // namespace im
