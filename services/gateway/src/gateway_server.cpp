@@ -115,6 +115,15 @@ GatewayServer::GatewayServer(int port,
             });                                                                          \
     })
 
+    IM_ROUTE("/api/user/logout", UserLogoutReq, UserLogoutRsp, UserService_Stub,
+             UserLogout, user_service_, true);
+    IM_ROUTE("/api/user/set_nickname", SetUserNicknameReq, SetUserNicknameRsp,
+             UserService_Stub, SetUserNickname, user_service_, true);
+    IM_ROUTE("/api/user/set_description", SetUserDescriptionReq, SetUserDescriptionRsp,
+             UserService_Stub, SetUserDescription, user_service_, true);
+    IM_ROUTE("/api/user/set_avatar", SetUserAvatarReq, SetUserAvatarRsp, UserService_Stub,
+             SetUserAvatar, user_service_, true);
+
     IM_ROUTE("/api/friend/list", GetFriendListReq, GetFriendListRsp,
              FriendService_Stub, GetFriendList, friend_service_, true);
     IM_ROUTE("/api/friend/add", FriendAddReq, FriendAddRsp, FriendService_Stub,
