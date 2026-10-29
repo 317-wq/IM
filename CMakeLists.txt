@@ -98,6 +98,7 @@ im_add_odb_lib(im_odb
         friend_apply.hxx
         chat_session.hxx
         chat_session_member.hxx
+        message.hxx
 )
 
 add_library(im_db STATIC
@@ -107,6 +108,7 @@ add_library(im_db STATIC
     common/src/db/chat_session_dao.cpp
     common/src/db/chat_session_member_dao.cpp
     common/src/db/friend_repository.cpp
+    common/src/db/message_dao.cpp
 )
 target_include_directories(im_db PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_db PUBLIC im_odb im_common)
@@ -133,4 +135,5 @@ add_subdirectory(services/file)
 add_subdirectory(services/user)
 add_subdirectory(services/friend)
 add_subdirectory(services/transmit)
+add_subdirectory(services/message)
 add_subdirectory(tests)
