@@ -1,0 +1,4 @@
+# clangd 配置：让编辑器从 CMake 生成的编译数据库读取头文件路径与宏定义。
+# 重新生成编译数据库：cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+CompileFlags:
+  CompilationDatabase: build
