@@ -1,4 +1,4 @@
-// 公共数据结构：跨服务复用的用户信息等。
+// 公共数据结构：跨服务复用的用户信息与会话信息。
 
 syntax = "proto3";
 
@@ -12,4 +12,13 @@ message UserInfo {
     string nickname    = 2;
     string description = 3;   // 个人签名，可为空
     bytes  avatar      = 4;   // 头像文件内容，列表接口可按需留空
+}
+
+// 会话信息：单聊与群聊共用
+message ChatSessionInfo {
+    string session_id = 1;
+    string name       = 2;
+    int32  type       = 3;   // 0-单聊，1-群聊
+    optional string single_chat_friend_id = 4;
+    optional UserInfo single_chat_friend = 5;
 }
