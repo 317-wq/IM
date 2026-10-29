@@ -75,3 +75,14 @@ message MessageInfo {
     UserInfo sender = 4;
     MessageContent message = 5;
 }
+
+// WebSocket 首帧鉴权
+message ClientAuthenticationReq {
+    string session_id = 1;
+}
+
+// WebSocket 推送通知（当前只用于新消息）
+message NotifyMessage {
+    int32 type = 1;          // 1-新消息
+    MessageInfo message = 2;
+}
