@@ -17,3 +17,7 @@ target_link_libraries(db_user_test PRIVATE im_db)
 # M3 用户服务验收客户端
 add_executable(user_client user_client.cpp)
 target_link_libraries(user_client PRIVATE im_proto im_common)
+
+# M4 数据层测试：好友关系、申请、会话、成员与跨表事务
+add_executable(friend_db_test friend_db_test.cpp)
+target_link_libraries(friend_db_test PRIVATE im_db)
