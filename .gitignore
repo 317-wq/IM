@@ -11,3 +11,7 @@ logs/*
 data/*
 !data/.gitkeep
 *.log
+
+pics/
+# 测试产物（不提交，单独维护）
+docs/测试用例.xlsx
