@@ -5,8 +5,10 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <odb/database.hxx>
 
@@ -24,7 +26,7 @@ class TransmitServiceImpl final : public TransmitService {
 public:
     TransmitServiceImpl(std::shared_ptr<odb::core::database> db,
                         ServiceManager::Ptr channels,
-                        MQClient::Ptr mq,
+                        std::vector<MQClient::Ptr> mqs,
                         std::string user_service,
                         std::string exchange,
                         std::string routing_key);
@@ -38,7 +40,8 @@ private:
     std::shared_ptr<odb::core::database> db_;
     std::shared_ptr<ChatSessionMemberDao> members_;
     ServiceManager::Ptr channels_;
-    MQClient::Ptr mq_;
+    std::vector<MQClient::Ptr> mqs_;
+    std::atomic<size_t> mq_index_{0};
     std::string user_service_;
     std::string exchange_;
     std::string routing_key_;
