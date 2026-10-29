@@ -276,6 +276,7 @@ void GatewayServer::onWsMessage(websocketpp::connection_hdl hdl,
     }
     auto uid = sessions_->userId(request.session_id());
     if (!uid) {
+        IM_WARN("ws auth failed: invalid session {}", request.session_id());
         ws_.close(hdl, websocketpp::close::status::unsupported_data, "invalid session");
         return;
     }
