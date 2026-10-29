@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <mutex>
 #include <thread>
 
 #include <amqpcpp.h>
@@ -63,6 +64,7 @@ private:
     std::unique_ptr<AMQP::TcpConnection> connection_;
     std::unique_ptr<AMQP::TcpChannel> channel_;
     std::thread loop_thread_;
+    std::mutex publish_mutex_;
     bool running_ = false;
 };
 
