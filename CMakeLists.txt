@@ -84,11 +84,21 @@ target_link_libraries(im_common PUBLIC im_deps)
 # ---------------------------------------------------------------------------
 im_add_odb_lib(im_odb
     ODB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/odb
-    FILES user.hxx
+    FILES
+        user.hxx
+        relation.hxx
+        friend_apply.hxx
+        chat_session.hxx
+        chat_session_member.hxx
 )
 
 add_library(im_db STATIC
     common/src/db/user_dao.cpp
+    common/src/db/relation_dao.cpp
+    common/src/db/friend_apply_dao.cpp
+    common/src/db/chat_session_dao.cpp
+    common/src/db/chat_session_member_dao.cpp
+    common/src/db/friend_repository.cpp
 )
 target_include_directories(im_db PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_db PUBLIC im_odb im_common)
