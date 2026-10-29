@@ -22,6 +22,8 @@ DEFINE_string(user_id, "", "发送者 user_id");
 DEFINE_string(session_id, "", "登录会话 ID");
 DEFINE_string(chat_session_id, "", "目标会话 ID");
 DEFINE_string(text, "hello", "文本消息内容");
+DEFINE_string(op, "text", "消息类型：text/image");
+DEFINE_string(image, "", "图片文件路径（op=image 时使用）");
 DEFINE_int32(rpc_timeout_ms, 5000, "RPC 超时（毫秒）");
 DEFINE_bool(run_mode, false, "运行模式");
 DEFINE_string(log_dir, "logs/transmit_client", "发布模式日志目录");
@@ -60,8 +62,20 @@ int main(int argc, char* argv[]) {
     request.set_user_id(FLAGS_user_id);
     request.set_session_id(FLAGS_session_id);
     request.set_chat_session_id(FLAGS_chat_session_id);
-    request.mutable_message()->set_message_type(im::MessageType::STRING);
-    request.mutable_message()->mutable_string_message()->set_content(FLAGS_text);
+
+    if (FLAGS_op == "image") {
+        std::string image;
+        if (!im::readFile(FLAGS_image, image)) {
+            std::printf("send failed: 读取图片失败\n");
+            return 1;
+        }
+        request.mutable_message()->set_message_type(im::MessageType::IMAGE);
+        request.mutable_message()->mutable_image_message()->set_image_content(
+            std::move(image));
+    } else {
+        request.mutable_message()->set_message_type(im::MessageType::STRING);
+        request.mutable_message()->mutable_string_message()->set_content(FLAGS_text);
+    }
 
     im::SendMessageRsp response;
     stub.SendMessage(&cntl, &request, &response, nullptr);
