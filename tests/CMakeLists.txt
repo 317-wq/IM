@@ -23,3 +23,7 @@ target_link_libraries(friend_client PRIVATE im_proto im_common)
 # M5 消息转发验收客户端
 add_executable(transmit_client transmit_client.cpp)
 target_link_libraries(transmit_client PRIVATE im_proto im_common)
+
+# M6 消息查询验收客户端
+add_executable(message_client message_client.cpp)
+target_link_libraries(message_client PRIVATE im_proto im_common)
