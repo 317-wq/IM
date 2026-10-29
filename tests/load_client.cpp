@@ -23,6 +23,8 @@ DEFINE_string(host, "127.0.0.1", "网关地址");
 DEFINE_int32(port, 9000, "网关端口");
 DEFINE_int32(count, 20, "总请求数");
 DEFINE_int32(concurrency, 4, "并发线程数");
+DEFINE_int32(duration, 0, "持续压测秒数，0 表示按 count 固定请求数");
+DEFINE_int32(pool, 500, "login 场景可复用的账号数量");
 DEFINE_string(prefix, "load", "压测账号前缀");
 DEFINE_string(password, "123456", "压测账号密码");
 DEFINE_string(account, "carol", "send 场景使用的登录账号");
@@ -94,14 +96,26 @@ Result runWorkers(Fn fn) {
             httplib::Client client(FLAGS_host, FLAGS_port);
             client.set_connection_timeout(3, 0);
             client.set_read_timeout(10, 0);
-            for (int i = 0; i < n; ++i) {
+            auto one = [&](int index) {
                 double latency = 0;
-                if (fn(client, start + i, latency)) {
+                if (fn(client, index, latency)) {
                     parts[t].ok++;
                 } else {
                     parts[t].fail++;
                 }
                 parts[t].latency_ms.push_back(latency);
+            };
+            if (FLAGS_duration > 0) {
+                auto deadline = std::chrono::steady_clock::now() +
+                                std::chrono::seconds(FLAGS_duration);
+                int index = start;
+                while (std::chrono::steady_clock::now() < deadline) {
+                    one(index++);
+                }
+            } else {
+                for (int i = 0; i < n; ++i) {
+                    one(start + i);
+                }
             }
         });
     }
@@ -157,10 +171,19 @@ int main(int argc, char* argv[]) {
     if (FLAGS_op == "login") {
         auto result = runWorkers([](httplib::Client& client, int index, double& latency) {
             im::UserLoginReq request;
-            request.set_account(accountAt(index));
+            request.set_account(accountAt(index % FLAGS_pool));
             request.set_password(FLAGS_password);
             im::UserLoginRsp response;
-            return post(client, "/api/user/login", request, response, latency);
+            if (!post(client, "/api/user/login", request, response, latency)) {
+                return false;
+            }
+            im::UserLogoutReq logout;
+            logout.set_session_id(response.session_id());
+            im::UserLogoutRsp logout_rsp;
+            double logout_latency = 0;
+            post(client, "/api/user/logout", logout, logout_rsp, logout_latency);
+            latency += logout_latency;
+            return true;
         });
         report(result, std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count());
         return 0;
