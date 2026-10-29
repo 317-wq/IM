@@ -25,6 +25,7 @@ DEFINE_int32(count, 20, "总请求数");
 DEFINE_int32(concurrency, 4, "并发线程数");
 DEFINE_int32(duration, 0, "持续压测秒数，0 表示按 count 固定请求数");
 DEFINE_int32(pool, 500, "login 场景可复用的账号数量");
+DEFINE_int32(offset, 0, "login 场景账号起始偏移，用于不同压测档使用不同账号");
 DEFINE_string(prefix, "load", "压测账号前缀");
 DEFINE_string(password, "123456", "压测账号密码");
 DEFINE_string(account, "carol", "send 场景使用的登录账号");
@@ -171,19 +172,10 @@ int main(int argc, char* argv[]) {
     if (FLAGS_op == "login") {
         auto result = runWorkers([](httplib::Client& client, int index, double& latency) {
             im::UserLoginReq request;
-            request.set_account(accountAt(index % FLAGS_pool));
+            request.set_account(accountAt(FLAGS_offset + index));
             request.set_password(FLAGS_password);
             im::UserLoginRsp response;
-            if (!post(client, "/api/user/login", request, response, latency)) {
-                return false;
-            }
-            im::UserLogoutReq logout;
-            logout.set_session_id(response.session_id());
-            im::UserLogoutRsp logout_rsp;
-            double logout_latency = 0;
-            post(client, "/api/user/logout", logout, logout_rsp, logout_latency);
-            latency += logout_latency;
-            return true;
+            return post(client, "/api/user/login", request, response, latency);
         });
         report(result, std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count());
         return 0;
