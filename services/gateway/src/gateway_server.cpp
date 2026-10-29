@@ -10,8 +10,11 @@
 #include <gflags/gflags.h>
 
 #include "etcd.hpp"
+#include "file.pb.h"
+#include "friend.pb.h"
 #include "logger.hpp"
 #include "message.pb.h"
+#include "transmit.pb.h"
 #include "user.pb.h"
 
 DEFINE_bool(run_mode, false, "运行模式");
@@ -22,6 +25,9 @@ DEFINE_string(etcd_host, "http://127.0.0.1:2379", "etcd 地址");
 DEFINE_string(service_base, "/im/service", "服务注册根目录");
 DEFINE_string(user_service, "/im/service/user", "用户服务名");
 DEFINE_string(message_service, "/im/service/message", "消息服务名");
+DEFINE_string(friend_service, "/im/service/friend", "好友服务名");
+DEFINE_string(transmit_service, "/im/service/transmit", "消息转发服务名");
+DEFINE_string(file_service, "/im/service/file", "文件服务名");
 DEFINE_string(redis_host, "127.0.0.1", "Redis 地址");
 DEFINE_int32(redis_port, 6379, "Redis 端口");
 DEFINE_int32(redis_db, 0, "Redis 库号");
@@ -35,12 +41,18 @@ GatewayServer::GatewayServer(int port,
                              std::shared_ptr<sw::redis::Redis> redis,
                              ServiceManager::Ptr channels,
                              std::string user_service,
-                             std::string message_service)
+                             std::string friend_service,
+                             std::string transmit_service,
+                             std::string message_service,
+                             std::string file_service)
     : sessions_(std::make_shared<SessionStore>(std::move(redis),
                                                std::chrono::seconds(7 * 24 * 3600))),
       channels_(std::move(channels)),
       user_service_(std::move(user_service)),
-      message_service_(std::move(message_service)) {
+      friend_service_(std::move(friend_service)),
+      transmit_service_(std::move(transmit_service)),
+      message_service_(std::move(message_service)),
+      file_service_(std::move(file_service)) {
     (void)port;
 
     http_.Post("/api/user/register",
@@ -86,6 +98,49 @@ GatewayServer::GatewayServer(int port,
                            stub.GetHistory(&c, &rq, &rs, nullptr);
                        });
                });
+
+#define IM_ROUTE(path, ReqT, RspT, StubT, method, service, need_auth)                    \
+    http_.Post(path, [this](const httplib::Request& req, httplib::Response& res) {       \
+        handle<need_auth, ReqT, RspT>(service, req, res,                                 \
+            [](brpc::Channel* ch, ReqT& rq, RspT& rs, brpc::Controller& c) {             \
+                StubT stub(ch);                                                          \
+                stub.method(&c, &rq, &rs, nullptr);                                      \
+            });                                                                          \
+    })
+
+    IM_ROUTE("/api/friend/list", GetFriendListReq, GetFriendListRsp,
+             FriendService_Stub, GetFriendList, friend_service_, true);
+    IM_ROUTE("/api/friend/add", FriendAddReq, FriendAddRsp, FriendService_Stub,
+             FriendAdd, friend_service_, true);
+    IM_ROUTE("/api/friend/process", FriendAddProcessReq, FriendAddProcessRsp,
+             FriendService_Stub, FriendAddProcess, friend_service_, true);
+    IM_ROUTE("/api/friend/pending", GetPendingFriendEventListReq,
+             GetPendingFriendEventListRsp, FriendService_Stub,
+             GetPendingFriendEventList, friend_service_, true);
+    IM_ROUTE("/api/friend/remove", FriendRemoveReq, FriendRemoveRsp, FriendService_Stub,
+             FriendRemove, friend_service_, true);
+    IM_ROUTE("/api/friend/search", FriendSearchReq, FriendSearchRsp, FriendService_Stub,
+             FriendSearch, friend_service_, true);
+    IM_ROUTE("/api/session/list", GetChatSessionListReq, GetChatSessionListRsp,
+             FriendService_Stub, GetChatSessionList, friend_service_, true);
+    IM_ROUTE("/api/session/create", ChatSessionCreateReq, ChatSessionCreateRsp,
+             FriendService_Stub, ChatSessionCreate, friend_service_, true);
+    IM_ROUTE("/api/session/members", GetChatSessionMemberReq, GetChatSessionMemberRsp,
+             FriendService_Stub, GetChatSessionMember, friend_service_, true);
+
+    IM_ROUTE("/api/message/send", SendMessageReq, SendMessageRsp,
+             TransmitService_Stub, SendMessage, transmit_service_, true);
+    IM_ROUTE("/api/message/recent", GetRecentMsgReq, GetRecentMsgRsp,
+             MessageService_Stub, GetRecent, message_service_, true);
+    IM_ROUTE("/api/message/search", MsgSearchReq, MsgSearchRsp,
+             MessageService_Stub, Search, message_service_, true);
+
+    IM_ROUTE("/api/file/put", PutFileRequest, PutFileResponse, FileService_Stub,
+             PutFile, file_service_, false);
+    IM_ROUTE("/api/file/get", GetFileRequest, GetFileResponse, FileService_Stub,
+             GetFile, file_service_, false);
+
+#undef IM_ROUTE
 
     http_.set_error_handler([](const httplib::Request&, httplib::Response& res) {
         res.status = 404;
@@ -165,6 +220,9 @@ int main(int argc, char* argv[]) {
     auto channels = std::make_shared<im::ServiceManager>(FLAGS_service_base);
     channels->follow(FLAGS_user_service);
     channels->follow(FLAGS_message_service);
+    channels->follow(FLAGS_friend_service);
+    channels->follow(FLAGS_transmit_service);
+    channels->follow(FLAGS_file_service);
     auto discovery = std::make_shared<im::Discovery>(
         FLAGS_etcd_host, FLAGS_service_base,
         [channels](const std::string& key, const std::string& host) {
@@ -175,7 +233,8 @@ int main(int argc, char* argv[]) {
         });
 
     im::GatewayServer gateway(FLAGS_http_port, redis, channels, FLAGS_user_service,
-                              FLAGS_message_service);
+                              FLAGS_friend_service, FLAGS_transmit_service,
+                              FLAGS_message_service, FLAGS_file_service);
     gateway.start();
     return 0;
 }
