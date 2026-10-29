@@ -54,6 +54,20 @@ public:
                                        const std::string& exclude_user_id,
                                        int limit);
 
+    /**
+     * @brief 确保消息索引存在（message_id/session_id/sender_id/content/created_at）。
+     */
+    bool ensureMessageIndex();
+
+    /**
+     * @brief 写入一条消息文档。
+     */
+    bool indexMessage(const std::string& message_id,
+                      const std::string& session_id,
+                      const std::string& sender_id,
+                      const std::string& content,
+                      int64_t created_at);
+
 private:
     std::string base_url_;
     std::string index_;
