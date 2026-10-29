@@ -18,6 +18,7 @@
 #include <gflags/gflags.h>
 
 #include "crypto.hpp"
+#include "es.hpp"
 #include "etcd.hpp"
 #include "file.pb.h"
 #include "logger.hpp"
@@ -36,6 +37,8 @@ DEFINE_string(advertise_host, "127.0.0.1:10002", "对外访问地址 host:port")
 DEFINE_int32(listen_port, 10002, "RPC 监听端口");
 DEFINE_int32(rpc_threads, 4, "RPC IO 线程数");
 DEFINE_string(file_service, "/im/service/file", "文件服务名");
+DEFINE_string(es_host, "http://127.0.0.1:9200", "Elasticsearch 地址");
+DEFINE_string(es_index, "im_user", "用户搜索索引名");
 
 DEFINE_string(mysql_host, "127.0.0.1", "MySQL 地址");
 DEFINE_int32(mysql_port, 3306, "MySQL 端口");
@@ -84,12 +87,14 @@ UserServiceImpl::UserServiceImpl(std::shared_ptr<odb::core::database> db,
                                  std::shared_ptr<SessionStore> session,
                                  std::shared_ptr<OnlineStore> online,
                                  ServiceManager::Ptr channels,
+                                 std::shared_ptr<ESClient> es,
                                  std::string file_service)
     : db_(std::move(db)),
       users_(std::make_shared<UserDao>(db_)),
       session_(std::move(session)),
       online_(std::move(online)),
       channels_(std::move(channels)),
+      es_(std::move(es)),
       file_service_(std::move(file_service)) {}
 
 /**
@@ -126,6 +131,8 @@ void UserServiceImpl::UserRegister(google::protobuf::RpcController* /*controller
     if (!users_->insert(user)) {
         return fail("注册失败");
     }
+
+    es_->upsertUser(user.user_id(), user.account(), user.nickname());
 
     response->set_success(true);
     response->set_user_id(user.user_id());
@@ -285,6 +292,7 @@ void UserServiceImpl::SetUserNickname(google::protobuf::RpcController* /*control
     if (!users_->update(*user)) {
         return fail("修改昵称失败");
     }
+    es_->upsertUser(user->user_id(), user->account(), user->nickname());
     response->set_success(true);
 }
 
@@ -485,6 +493,9 @@ int main(int argc, char* argv[]) {
     auto session = std::make_shared<im::SessionStore>(redis, ttl);
     auto online = std::make_shared<im::OnlineStore>(redis, ttl);
 
+    auto es = std::make_shared<im::ESClient>(FLAGS_es_host, FLAGS_es_index);
+    es->ensureIndex();
+
     auto channels = std::make_shared<im::ServiceManager>(FLAGS_service_base);
     channels->follow(FLAGS_file_service);
     auto discovery = std::make_shared<im::Discovery>(
@@ -497,7 +508,7 @@ int main(int argc, char* argv[]) {
         });
 
     brpc::Server server;
-    im::UserServiceImpl service(db, session, online, channels, FLAGS_file_service);
+    im::UserServiceImpl service(db, session, online, channels, es, FLAGS_file_service);
     if (server.AddService(&service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         IM_FATAL("add user service failed");
         return -1;
