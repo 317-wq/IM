@@ -49,8 +49,11 @@ private:
     /// WebSocket 首帧鉴权：session_id -> uid，绑定连接
     void onWsMessage(websocketpp::connection_hdl hdl, WsServer::message_ptr msg);
 
-    /// 连接断开：移除 uid 映射
+    /// 连接断开：移除映射并清理 Redis 会话
     void onWsClose(websocketpp::connection_hdl hdl);
+
+    /// 心跳：定期 ping，连接仍开着则重新挂定时器
+    void keepAlive(WsServer::connection_ptr conn);
 
     /// 把新消息推给在线目标
     void pushMessage(const SendMessageRsp& response);
@@ -60,7 +63,13 @@ private:
     int ws_port_;
     std::thread http_thread_;
 
+    struct WsClient {
+        std::string uid;
+        std::string ssid;
+    };
+
     std::shared_ptr<SessionStore> sessions_;
+    std::shared_ptr<OnlineStore> online_;
     ServiceManager::Ptr channels_;
     std::string user_service_;
     std::string friend_service_;
@@ -70,7 +79,7 @@ private:
 
     std::mutex ws_mutex_;
     std::unordered_map<std::string, WsServer::connection_ptr> uid_conns_;
-    std::unordered_map<WsServer::connection_ptr, std::string> conn_uids_;
+    std::unordered_map<WsServer::connection_ptr, WsClient> conn_clients_;
 };
 
 } // namespace im
