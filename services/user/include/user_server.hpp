@@ -12,6 +12,7 @@
 
 #include "channel.hpp"
 #include "db/user_dao.hpp"
+#include "es.hpp"
 #include "redis.hpp"
 #include "user.pb.h"
 
@@ -34,6 +35,7 @@ public:
                     std::shared_ptr<SessionStore> session,
                     std::shared_ptr<OnlineStore> online,
                     ServiceManager::Ptr channels,
+                    std::shared_ptr<ESClient> es,
                     std::string file_service);
 
     void UserRegister(google::protobuf::RpcController* controller,
@@ -94,6 +96,7 @@ private:
     std::shared_ptr<SessionStore> session_;
     std::shared_ptr<OnlineStore> online_;
     ServiceManager::Ptr channels_;
+    std::shared_ptr<ESClient> es_;
     std::string file_service_;
 };
 
