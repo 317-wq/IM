@@ -9,6 +9,8 @@
 
 #include <gflags/gflags.h>
 
+#include <boost/system/error_code.hpp>
+
 #include "base.pb.h"
 #include "etcd.hpp"
 #include "file.pb.h"
@@ -48,7 +50,8 @@ GatewayServer::GatewayServer(int port,
                              std::string transmit_service,
                              std::string message_service,
                              std::string file_service)
-    : sessions_(std::make_shared<SessionStore>(std::move(redis),
+    : ws_port_(ws_port),
+      sessions_(std::make_shared<SessionStore>(redis,
                                                std::chrono::seconds(7 * 24 * 3600))),
       channels_(std::move(channels)),
       user_service_(std::move(user_service)),
@@ -275,20 +278,39 @@ void GatewayServer::onWsMessage(websocketpp::connection_hdl hdl,
         ws_.close(hdl, websocketpp::close::status::unsupported_data, "invalid session");
         return;
     }
-    std::lock_guard<std::mutex> lock(ws_mutex_);
-    uid_conns_[*uid] = conn;
-    conn_uids_[conn] = *uid;
+    {
+        std::lock_guard<std::mutex> lock(ws_mutex_);
+        uid_conns_[*uid] = conn;
+        conn_clients_[conn] = WsClient{*uid, request.session_id()};
+    }
+    keepAlive(conn);
     IM_INFO("ws auth ok uid={}", *uid);
 }
 
 void GatewayServer::onWsClose(websocketpp::connection_hdl hdl) {
     auto conn = ws_.get_con_from_hdl(hdl);
-    std::lock_guard<std::mutex> lock(ws_mutex_);
-    auto it = conn_uids_.find(conn);
-    if (it != conn_uids_.end()) {
-        uid_conns_.erase(it->second);
-        conn_uids_.erase(it);
+    WsClient client;
+    {
+        std::lock_guard<std::mutex> lock(ws_mutex_);
+        auto it = conn_clients_.find(conn);
+        if (it == conn_clients_.end()) {
+            return;
+        }
+        client = it->second;
+        uid_conns_.erase(client.uid);
+        conn_clients_.erase(it);
     }
+    sessions_->remove(client.ssid);
+    online_->remove(client.uid);
+    IM_INFO("ws closed uid={}, session cleared", client.uid);
+}
+
+void GatewayServer::keepAlive(WsServer::connection_ptr conn) {
+    if (!conn || conn->get_state() != websocketpp::session::state::open) {
+        return;
+    }
+    conn->ping("");
+    ws_.set_timer(30000, [this, conn](const boost::system::error_code&) { keepAlive(conn); });
 }
 
 void GatewayServer::pushMessage(const SendMessageRsp& response) {
@@ -300,9 +322,15 @@ void GatewayServer::pushMessage(const SendMessageRsp& response) {
     std::lock_guard<std::mutex> lock(ws_mutex_);
     for (const auto& uid : response.target_ids()) {
         auto it = uid_conns_.find(uid);
-        if (it != uid_conns_.end()) {
-            it->second->send(data, websocketpp::frame::opcode::binary);
+        if (it == uid_conns_.end()) {
+            continue;
         }
+        auto conn = it->second;
+        ws_.get_io_service().post([conn, data]() {
+            if (conn->get_state() == websocketpp::session::state::open) {
+                conn->send(data, websocketpp::frame::opcode::binary);
+            }
+        });
     }
 }
 
