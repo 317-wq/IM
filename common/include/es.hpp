@@ -20,6 +20,11 @@ struct ESUserDoc {
     std::string nickname;
 };
 
+/// 消息索引搜索结果（只取 id，详情回 MySQL 查）
+struct ESMessageDoc {
+    std::string message_id;
+};
+
 /**
  * @brief 用户索引客户端。
  */
@@ -67,6 +72,13 @@ public:
                       const std::string& sender_id,
                       const std::string& content,
                       int64_t created_at);
+
+    /**
+     * @brief 在指定会话内按关键字搜索消息。
+     */
+    std::vector<ESMessageDoc> searchMessages(const std::string& session_id,
+                                             const std::string& key,
+                                             int limit);
 
 private:
     std::string base_url_;
