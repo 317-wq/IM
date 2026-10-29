@@ -42,3 +42,8 @@ target_link_libraries(ws_client PRIVATE im_proto im_common Boost::system)
 add_executable(load_client load_client.cpp)
 target_include_directories(load_client PRIVATE ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib)
 target_link_libraries(load_client PRIVATE im_proto im_common)
+
+# WebSocket 连接容量测试
+add_executable(ws_load_client ws_load_client.cpp)
+target_include_directories(ws_load_client PRIVATE ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib)
+target_link_libraries(ws_load_client PRIVATE im_proto im_common Boost::system)
