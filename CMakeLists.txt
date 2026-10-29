@@ -125,6 +125,7 @@ im_add_proto_lib(im_proto
         user.proto
         friend.proto
         transmit.proto
+        message.proto
 )
 
 # ---------------------------------------------------------------------------
