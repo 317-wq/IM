@@ -34,6 +34,9 @@ public:
                                const boost::posix_time::ptime& start,
                                const boost::posix_time::ptime& end);
 
+    /// 按 message_id 查询
+    std::shared_ptr<Message> findById(const std::string& message_id);
+
 private:
     std::shared_ptr<odb::core::database> db_;
 };
