@@ -41,6 +41,7 @@ DEFINE_string(mq_host, "127.0.0.1:5672", "RabbitMQ 地址");
 DEFINE_string(mq_exchange, "im.msg", "消息交换机");
 DEFINE_string(mq_queue, "im.msg.persist", "持久化队列");
 DEFINE_string(mq_routing_key, "im.msg.persist", "路由键");
+DEFINE_int32(mq_publishers, 4, "发布用 MQ 连接/信道数量");
 
 namespace im {
 
@@ -64,14 +65,14 @@ std::string mysqlPassword() {
  */
 TransmitServiceImpl::TransmitServiceImpl(std::shared_ptr<odb::core::database> db,
                                          ServiceManager::Ptr channels,
-                                         MQClient::Ptr mq,
+                                         std::vector<MQClient::Ptr> mqs,
                                          std::string user_service,
                                          std::string exchange,
                                          std::string routing_key)
     : db_(std::move(db)),
       members_(std::make_shared<ChatSessionMemberDao>(db_)),
       channels_(std::move(channels)),
-      mq_(std::move(mq)),
+      mqs_(std::move(mqs)),
       user_service_(std::move(user_service)),
       exchange_(std::move(exchange)),
       routing_key_(std::move(routing_key)) {}
@@ -128,7 +129,8 @@ void TransmitServiceImpl::SendMessage(google::protobuf::RpcController*,
     message.mutable_sender()->CopyFrom(user_response.user_info());
     message.mutable_message()->CopyFrom(request->message());
 
-    if (!mq_->publish(exchange_, message.SerializeAsString(), routing_key_)) {
+    auto mq = mqs_[mq_index_.fetch_add(1) % mqs_.size()];
+    if (!mq->publish(exchange_, message.SerializeAsString(), routing_key_)) {
         return fail("消息投递失败");
     }
 
@@ -155,9 +157,14 @@ int main(int argc, char* argv[]) {
                                      FLAGS_mysql_charset,
                                      static_cast<unsigned int>(FLAGS_mysql_port),
                                      FLAGS_mysql_pool);
-    auto mq = std::make_shared<im::MQClient>(FLAGS_mq_user, FLAGS_mq_password,
-                                             FLAGS_mq_host);
-    mq->declareComponents(FLAGS_mq_exchange, FLAGS_mq_queue, FLAGS_mq_routing_key);
+    const int publisher_count = FLAGS_mq_publishers > 0 ? FLAGS_mq_publishers : 1;
+    std::vector<im::MQClient::Ptr> mqs;
+    for (int i = 0; i < publisher_count; ++i) {
+        auto mq = std::make_shared<im::MQClient>(FLAGS_mq_user, FLAGS_mq_password,
+                                                 FLAGS_mq_host);
+        mq->declareComponents(FLAGS_mq_exchange, FLAGS_mq_queue, FLAGS_mq_routing_key);
+        mqs.push_back(mq);
+    }
 
     auto channels = std::make_shared<im::ServiceManager>(FLAGS_service_base);
     channels->follow(FLAGS_user_service);
@@ -171,7 +178,7 @@ int main(int argc, char* argv[]) {
         });
 
     brpc::Server server;
-    im::TransmitServiceImpl service(db, channels, mq, FLAGS_user_service,
+    im::TransmitServiceImpl service(db, channels, std::move(mqs), FLAGS_user_service,
                                     FLAGS_mq_exchange, FLAGS_mq_routing_key);
     if (server.AddService(&service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         IM_FATAL("add transmit service failed");
