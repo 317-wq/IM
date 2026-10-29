@@ -37,3 +37,8 @@ target_link_libraries(gateway_client PRIVATE im_proto im_common)
 add_executable(ws_client ws_client.cpp)
 target_include_directories(ws_client PRIVATE ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib)
 target_link_libraries(ws_client PRIVATE im_proto im_common Boost::system)
+
+# 容量/压测客户端
+add_executable(load_client load_client.cpp)
+target_include_directories(load_client PRIVATE ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib)
+target_link_libraries(load_client PRIVATE im_proto im_common)
