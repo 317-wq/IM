@@ -101,24 +101,13 @@ void TransmitServiceImpl::SendMessage(google::protobuf::RpcController*,
         return fail("会话 ID 不能为空");
     }
 
-    auto member_ids = members_->memberIds(session_id);
+    auto member_ids = cachedMembers(session_id);
     if (std::find(member_ids.begin(), member_ids.end(), uid) == member_ids.end()) {
         return fail("无权在该会话发送消息");
     }
 
-    auto channel = channels_->choose(user_service_);
-    if (!channel) {
-        return fail("用户服务不可用");
-    }
-
-    GetUserInfoReq user_request;
-    user_request.set_request_id(request->request_id());
-    user_request.set_user_id(uid);
-    GetUserInfoRsp user_response;
-    UserService_Stub user_stub(channel.get());
-    brpc::Controller cntl;
-    user_stub.GetUserInfo(&cntl, &user_request, &user_response, nullptr);
-    if (cntl.Failed() || !user_response.success()) {
+    UserInfo sender;
+    if (!cachedSender(request->request_id(), uid, sender)) {
         return fail("获取发送者信息失败");
     }
 
@@ -126,7 +115,7 @@ void TransmitServiceImpl::SendMessage(google::protobuf::RpcController*,
     message.set_message_id(uuid());
     message.set_chat_session_id(session_id);
     message.set_timestamp(now_s());
-    message.mutable_sender()->CopyFrom(user_response.user_info());
+    message.mutable_sender()->CopyFrom(sender);
     message.mutable_message()->CopyFrom(request->message());
 
     auto mq = mqs_[mq_index_.fetch_add(1) % mqs_.size()];
@@ -141,6 +130,59 @@ void TransmitServiceImpl::SendMessage(google::protobuf::RpcController*,
     }
     IM_INFO("transmit session={} message={} targets={}", session_id, message.message_id(),
             member_ids.size());
+}
+
+std::vector<std::string> TransmitServiceImpl::cachedMembers(
+    const std::string& session_id) {
+    const auto now = std::chrono::steady_clock::now();
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        auto it = member_cache_.find(session_id);
+        if (it != member_cache_.end() && it->second.expire > now) {
+            return it->second.ids;
+        }
+    }
+    auto ids = members_->memberIds(session_id);
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        member_cache_[session_id] = MemberCache{ids, now + std::chrono::seconds(30)};
+    }
+    return ids;
+}
+
+bool TransmitServiceImpl::cachedSender(const std::string& request_id,
+                                       const std::string& user_id,
+                                       UserInfo& info) {
+    const auto now = std::chrono::steady_clock::now();
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        auto it = sender_cache_.find(user_id);
+        if (it != sender_cache_.end() && it->second.expire > now) {
+            info = it->second.info;
+            return true;
+        }
+    }
+
+    auto channel = channels_->choose(user_service_);
+    if (!channel) {
+        return false;
+    }
+    GetUserInfoReq request;
+    request.set_request_id(request_id);
+    request.set_user_id(user_id);
+    GetUserInfoRsp response;
+    UserService_Stub stub(channel.get());
+    brpc::Controller cntl;
+    stub.GetUserInfo(&cntl, &request, &response, nullptr);
+    if (cntl.Failed() || !response.success()) {
+        return false;
+    }
+    info = response.user_info();
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        sender_cache_[user_id] = SenderCache{info, now + std::chrono::seconds(60)};
+    }
+    return true;
 }
 
 } // namespace im
