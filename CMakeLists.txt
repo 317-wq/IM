@@ -27,6 +27,7 @@ pkg_check_modules(FMT       REQUIRED IMPORTED_TARGET fmt)
 pkg_check_modules(ODB_MYSQL REQUIRED IMPORTED_TARGET libodb-mysql)
 pkg_check_modules(ODB_BOOST REQUIRED IMPORTED_TARGET libodb-boost)
 pkg_check_modules(REDISPP   REQUIRED IMPORTED_TARGET redis++)
+pkg_check_modules(AMQPCPP   REQUIRED IMPORTED_TARGET amqpcpp)
 
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
@@ -35,6 +36,7 @@ find_package(ZLIB REQUIRED)
 find_package(etcd-cpp-api REQUIRED)
 find_package(Boost REQUIRED COMPONENTS date_time)
 find_library(CPR_LIBRARY NAMES cpr REQUIRED)
+find_library(EV_LIBRARY NAMES ev REQUIRED)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Proto.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Odb.cmake)
@@ -63,6 +65,8 @@ target_link_libraries(im_deps INTERFACE
     etcd-cpp-api
     Boost::date_time
     ${CPR_LIBRARY}
+    PkgConfig::AMQPCPP
+    ${EV_LIBRARY}
 )
 
 # ---------------------------------------------------------------------------
@@ -78,6 +82,7 @@ add_library(im_common STATIC
     common/src/redis.cpp
     common/src/crypto.cpp
     common/src/es.cpp
+    common/src/mq.cpp
 )
 target_include_directories(im_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_common PUBLIC im_deps)
@@ -117,6 +122,7 @@ im_add_proto_lib(im_proto
         file.proto
         user.proto
         friend.proto
+        transmit.proto
 )
 
 # ---------------------------------------------------------------------------
@@ -126,4 +132,5 @@ add_subdirectory(services/echo)
 add_subdirectory(services/file)
 add_subdirectory(services/user)
 add_subdirectory(services/friend)
+add_subdirectory(services/transmit)
 add_subdirectory(tests)
