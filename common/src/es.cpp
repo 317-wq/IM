@@ -147,6 +147,44 @@ bool ESClient::indexMessage(const std::string& message_id,
 }
 
 /**
+ * @brief 实现消息搜索：session_id 精确匹配 + content 通配符。
+ */
+std::vector<ESMessageDoc> ESClient::searchMessages(const std::string& session_id,
+                                                   const std::string& key,
+                                                   int limit) {
+    const json query = {
+        {"size", limit},
+        {"query", {{"bool", {
+            {"must", json::array({
+                {{"term", {{"session_id", session_id}}}},
+                {{"wildcard", {{"content", "*" + key + "*"}}}},
+            })},
+        }}}},
+    };
+
+    auto response = cpr::Post(
+        cpr::Url{base_url_ + "/" + index_ + "/_search"},
+        cpr::Body{query.dump()},
+        cpr::Header{{"Content-Type", "application/json"}},
+        cpr::Timeout{3000});
+
+    std::vector<ESMessageDoc> result;
+    if (!ok(response.status_code)) {
+        IM_ERROR("es search messages failed: {} {}", response.status_code, response.text);
+        return result;
+    }
+    try {
+        const json body = json::parse(response.text);
+        for (const auto& hit : body.at("hits").at("hits")) {
+            result.push_back(ESMessageDoc{hit.at("_source").value("message_id", "")});
+        }
+    } catch (const std::exception& e) {
+        IM_ERROR("parse message search result failed: {}", e.what());
+    }
+    return result;
+}
+
+/**
  * @brief 实现搜索：account / nickname 通配符匹配，排除指定用户。
  */
 std::vector<ESUserDoc> ESClient::searchUsers(const std::string& key,
