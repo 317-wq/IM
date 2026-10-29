@@ -34,7 +34,7 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(etcd-cpp-api REQUIRED)
-find_package(Boost REQUIRED COMPONENTS date_time)
+find_package(Boost REQUIRED COMPONENTS date_time system)
 find_library(CPR_LIBRARY NAMES cpr REQUIRED)
 find_library(EV_LIBRARY NAMES ev REQUIRED)
 
