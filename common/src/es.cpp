@@ -87,6 +87,66 @@ bool ESClient::upsertUser(const std::string& user_id,
 }
 
 /**
+ * @brief 实现消息索引创建：字段均为 keyword/long，便于精确过滤与通配符搜索。
+ */
+bool ESClient::ensureMessageIndex() {
+    const json mapping = {
+        {"mappings", {{"properties", {
+            {"message_id", {{"type", "keyword"}}},
+            {"session_id", {{"type", "keyword"}}},
+            {"sender_id", {{"type", "keyword"}}},
+            {"content", {{"type", "keyword"}}},
+            {"created_at", {{"type", "long"}}},
+        }}}},
+    };
+
+    auto response = cpr::Put(
+        cpr::Url{base_url_ + "/" + index_},
+        cpr::Body{mapping.dump()},
+        cpr::Header{{"Content-Type", "application/json"}},
+        cpr::Timeout{3000});
+
+    if (ok(response.status_code) ||
+        (response.status_code == 400 &&
+         response.text.find("resource_already_exists_exception") != std::string::npos)) {
+        IM_INFO("es message index {} ready", index_);
+        return true;
+    }
+    IM_ERROR("create es message index {} failed: {}", index_, response.status_code);
+    return false;
+}
+
+/**
+ * @brief 实现消息写入：以 message_id 作为文档 id。
+ */
+bool ESClient::indexMessage(const std::string& message_id,
+                            const std::string& session_id,
+                            const std::string& sender_id,
+                            const std::string& content,
+                            int64_t created_at) {
+    const json doc = {
+        {"message_id", message_id},
+        {"session_id", session_id},
+        {"sender_id", sender_id},
+        {"content", content},
+        {"created_at", created_at},
+    };
+
+    auto response = cpr::Put(
+        cpr::Url{base_url_ + "/" + index_ + "/_doc/" + message_id + "?refresh=true"},
+        cpr::Body{doc.dump()},
+        cpr::Header{{"Content-Type", "application/json"}},
+        cpr::Timeout{3000});
+
+    if (!ok(response.status_code)) {
+        IM_WARN("es index message {} failed: {} {}", message_id, response.status_code,
+                response.text);
+        return false;
+    }
+    return true;
+}
+
+/**
  * @brief 实现搜索：account / nickname 通配符匹配，排除指定用户。
  */
 std::vector<ESUserDoc> ESClient::searchUsers(const std::string& key,
