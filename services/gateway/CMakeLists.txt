@@ -7,4 +7,4 @@ target_include_directories(gateway_server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib
 )
-target_link_libraries(gateway_server PRIVATE im_proto im_common)
+target_link_libraries(gateway_server PRIVATE im_proto im_common Boost::system)
