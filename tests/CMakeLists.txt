@@ -27,3 +27,8 @@ target_link_libraries(transmit_client PRIVATE im_proto im_common)
 # M6 消息查询验收客户端
 add_executable(message_client message_client.cpp)
 target_link_libraries(message_client PRIVATE im_proto im_common)
+
+# M7 网关验收客户端
+add_executable(gateway_client gateway_client.cpp)
+target_include_directories(gateway_client PRIVATE ${CMAKE_SOURCE_DIR}/third_party/cpp-httplib)
+target_link_libraries(gateway_client PRIVATE im_proto im_common)
