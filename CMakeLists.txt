@@ -34,6 +34,7 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(etcd-cpp-api REQUIRED)
 find_package(Boost REQUIRED COMPONENTS date_time)
+find_library(CPR_LIBRARY NAMES cpr REQUIRED)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Proto.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Odb.cmake)
@@ -61,6 +62,7 @@ target_link_libraries(im_deps INTERFACE
     dl
     etcd-cpp-api
     Boost::date_time
+    ${CPR_LIBRARY}
 )
 
 # ---------------------------------------------------------------------------
@@ -75,6 +77,7 @@ add_library(im_common STATIC
     common/src/mysql.cpp
     common/src/redis.cpp
     common/src/crypto.cpp
+    common/src/es.cpp
 )
 target_include_directories(im_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
 target_link_libraries(im_common PUBLIC im_deps)
@@ -113,6 +116,7 @@ im_add_proto_lib(im_proto
         echo.proto
         file.proto
         user.proto
+        friend.proto
 )
 
 # ---------------------------------------------------------------------------
@@ -121,4 +125,5 @@ im_add_proto_lib(im_proto
 add_subdirectory(services/echo)
 add_subdirectory(services/file)
 add_subdirectory(services/user)
+add_subdirectory(services/friend)
 add_subdirectory(tests)
