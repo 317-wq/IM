@@ -10,7 +10,9 @@
 #include <httplib.h>
 
 #include "logger.hpp"
+#include "friend.pb.h"
 #include "message.pb.h"
+#include "transmit.pb.h"
 #include "user.pb.h"
 #include "utils.hpp"
 
@@ -21,7 +23,8 @@ DEFINE_string(account, "", "登录名");
 DEFINE_string(nickname, "", "昵称");
 DEFINE_string(password, "", "密码");
 DEFINE_string(session_id, "", "登录会话 ID");
-DEFINE_string(chat_session_id, "", "历史消息会话 ID");
+DEFINE_string(chat_session_id, "", "会话 ID");
+DEFINE_string(text, "hello-gateway", "发送的文本内容");
 DEFINE_bool(run_mode, false, "运行模式");
 DEFINE_string(log_dir, "logs/gateway_client", "发布模式日志目录");
 DEFINE_int32(log_level, 0, "日志等级");
@@ -111,6 +114,68 @@ int main(int argc, char* argv[]) {
             std::printf("id=%s type=%d\n", message.message_id().c_str(),
                         static_cast<int>(message.message().message_type()));
         }
+        return 0;
+    }
+
+    if (FLAGS_op == "friend_list") {
+        im::GetFriendListReq request;
+        request.set_session_id(FLAGS_session_id);
+        im::GetFriendListRsp response;
+        if (!post(client, "/api/friend/list", request, response) || !response.success()) {
+            std::printf("friend_list failed: %s\n", response.errmsg().c_str());
+            return 1;
+        }
+        std::printf("count=%d\n", response.friends_size());
+        for (const auto& user : response.friends()) {
+            std::printf("user_id=%s nickname=%s\n", user.user_id().c_str(),
+                        user.nickname().c_str());
+        }
+        return 0;
+    }
+
+    if (FLAGS_op == "sessions") {
+        im::GetChatSessionListReq request;
+        request.set_session_id(FLAGS_session_id);
+        im::GetChatSessionListRsp response;
+        if (!post(client, "/api/session/list", request, response) || !response.success()) {
+            std::printf("sessions failed: %s\n", response.errmsg().c_str());
+            return 1;
+        }
+        std::printf("count=%d\n", response.sessions_size());
+        for (const auto& session : response.sessions()) {
+            std::printf("session_id=%s type=%d\n", session.session_id().c_str(),
+                        session.type());
+        }
+        return 0;
+    }
+
+    if (FLAGS_op == "send") {
+        im::SendMessageReq request;
+        request.set_session_id(FLAGS_session_id);
+        request.set_chat_session_id(FLAGS_chat_session_id);
+        request.mutable_message()->set_message_type(im::MessageType::STRING);
+        request.mutable_message()->mutable_string_message()->set_content(FLAGS_text);
+        im::SendMessageRsp response;
+        if (!post(client, "/api/message/send", request, response) || !response.success()) {
+            std::printf("send failed: %s\n", response.errmsg().c_str());
+            return 1;
+        }
+        std::printf("message_id=%s targets=%d\n", response.message().message_id().c_str(),
+                    response.target_ids_size());
+        return 0;
+    }
+
+    if (FLAGS_op == "recent") {
+        im::GetRecentMsgReq request;
+        request.set_session_id(FLAGS_session_id);
+        request.set_chat_session_id(FLAGS_chat_session_id);
+        request.set_count(5);
+        im::GetRecentMsgRsp response;
+        if (!post(client, "/api/message/recent", request, response) || !response.success()) {
+            std::printf("recent failed: %s\n", response.errmsg().c_str());
+            return 1;
+        }
+        std::printf("count=%d\n", response.messages_size());
         return 0;
     }
 
