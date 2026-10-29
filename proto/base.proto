@@ -22,3 +22,56 @@ message ChatSessionInfo {
     optional string single_chat_friend_id = 4;
     optional UserInfo single_chat_friend = 5;
 }
+
+// 消息类型
+enum MessageType {
+    STRING = 0;
+    IMAGE  = 1;
+    FILE   = 2;
+    SPEECH = 3;
+}
+
+// 文本消息
+message StringMessage {
+    string content = 1;
+}
+
+// 图片消息
+message ImageMessage {
+    optional string file_id = 1;
+    optional bytes  image_content = 2;
+}
+
+// 文件消息
+message FileMessage {
+    optional string file_id = 1;
+    optional int64  file_size = 2;
+    optional string file_name = 3;
+    optional bytes  file_contents = 4;
+}
+
+// 语音消息
+message SpeechMessage {
+    optional string file_id = 1;
+    optional bytes  file_contents = 2;
+}
+
+// 消息内容：类型 + 具体内容
+message MessageContent {
+    MessageType message_type = 1;
+    oneof content {
+        StringMessage string_message = 2;
+        ImageMessage  image_message  = 3;
+        FileMessage   file_message   = 4;
+        SpeechMessage speech_message = 5;
+    }
+}
+
+// 完整消息：发送者、会话、时间、内容
+message MessageInfo {
+    string message_id = 1;
+    string chat_session_id = 2;
+    int64  timestamp = 3;
+    UserInfo sender = 4;
+    MessageContent message = 5;
+}
