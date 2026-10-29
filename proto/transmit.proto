@@ -1,0 +1,29 @@
+// M5 消息转发服务接口：组装消息、校验成员、投递 MQ、返回推送目标。
+
+syntax = "proto3";
+
+package im;
+
+import "base.proto";
+
+option cc_generic_services = true;
+
+message SendMessageReq {
+    string request_id = 1;
+    optional string session_id = 2;
+    optional string user_id    = 3;   // 发送者（网关注入）
+    string chat_session_id = 4;
+    MessageContent message = 5;
+}
+
+message SendMessageRsp {
+    string request_id = 1;
+    bool   success    = 2;
+    string errmsg     = 3;
+    MessageInfo message = 4;          // 组装好的完整消息
+    repeated string target_ids = 5;   // 需要推送的目标用户
+}
+
+service TransmitService {
+    rpc SendMessage(SendMessageReq) returns (SendMessageRsp);
+}
