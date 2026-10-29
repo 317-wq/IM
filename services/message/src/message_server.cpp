@@ -12,6 +12,7 @@
 #include <gflags/gflags.h>
 
 #include "base.pb.h"
+#include "file.pb.h"
 #include "channel.hpp"
 #include "etcd.hpp"
 #include "logger.hpp"
@@ -36,6 +37,7 @@ DEFINE_string(mq_queue, "im.msg.persist", "持久化消息队列");
 DEFINE_string(mq_routing_key, "im.msg.persist", "路由键");
 DEFINE_string(es_host, "http://127.0.0.1:9200", "Elasticsearch 地址");
 DEFINE_string(es_index, "im_message", "消息索引名");
+DEFINE_string(file_service, "/im/service/file", "文件服务名");
 
 DEFINE_string(etcd_host, "http://127.0.0.1:2379", "etcd 地址");
 DEFINE_string(service_base, "/im/service", "服务注册根目录");
@@ -69,12 +71,16 @@ std::string mysqlPassword() {
 MessageConsumer::MessageConsumer(std::shared_ptr<odb::core::database> db,
                                  std::shared_ptr<ESClient> es,
                                  MQClient::Ptr mq,
-                                 std::string queue)
+                                 std::string queue,
+                                 ServiceManager::Ptr channels,
+                                 std::string file_service)
     : db_(std::move(db)),
       messages_(std::make_shared<MessageDao>(db_)),
       es_(std::move(es)),
       mq_(std::move(mq)),
-      queue_(std::move(queue)) {}
+      queue_(std::move(queue)),
+      channels_(std::move(channels)),
+      file_service_(std::move(file_service)) {}
 
 /**
  * @brief 实现启动：注册消费回调。
@@ -106,18 +112,47 @@ void MessageConsumer::onMessage(const char* body, size_t size) {
             content = info.message().string_message().content();
             message.content(content);
             break;
-        case MessageType::IMAGE:
-            message.file_id(info.message().image_message().file_id());
+        case MessageType::IMAGE: {
+            std::string file_id;
+            if (!info.message().image_message().image_content().empty()) {
+                if (!uploadFile(info.message_id(),
+                                info.message().image_message().image_content(),
+                                "image", file_id)) {
+                    return;
+                }
+                message.file_id(file_id);
+            } else {
+                message.file_id(info.message().image_message().file_id());
+            }
             break;
-        case MessageType::FILE:
-            message.file_id(info.message().file_message().file_id());
+        }
+        case MessageType::FILE: {
+            std::string file_id = info.message().file_message().file_id();
+            if (!info.message().file_message().file_contents().empty()) {
+                if (!uploadFile(info.message_id(),
+                                info.message().file_message().file_contents(),
+                                info.message().file_message().file_name(), file_id)) {
+                    return;
+                }
+            }
+            message.file_id(file_id);
             message.file_name(info.message().file_message().file_name());
             message.file_size(static_cast<unsigned int>(
                 info.message().file_message().file_size()));
             break;
-        case MessageType::SPEECH:
-            message.file_id(info.message().speech_message().file_id());
+        }
+        case MessageType::SPEECH: {
+            std::string file_id = info.message().speech_message().file_id();
+            if (!info.message().speech_message().file_contents().empty()) {
+                if (!uploadFile(info.message_id(),
+                                info.message().speech_message().file_contents(),
+                                "speech", file_id)) {
+                    return;
+                }
+            }
+            message.file_id(file_id);
             break;
+        }
         default:
             IM_ERROR("unknown message type {}", info.message().message_type());
             return;
@@ -129,6 +164,34 @@ void MessageConsumer::onMessage(const char* body, size_t size) {
     es_->indexMessage(message.message_id(), message.session_id(), message.sender_id(),
                       content, info.timestamp());
     IM_INFO("stored message {} session={}", message.message_id(), message.session_id());
+}
+
+/**
+ * @brief 实现文件上传：调用 file 服务的 PutFile。
+ */
+bool MessageConsumer::uploadFile(const std::string& request_id,
+                                 const std::string& content,
+                                 const std::string& file_name,
+                                 std::string& file_id) {
+    auto channel = channels_->choose(file_service_);
+    if (!channel) {
+        IM_ERROR("{} no file service node", request_id);
+        return false;
+    }
+    FileService_Stub stub(channel.get());
+    PutFileRequest request;
+    request.set_request_id(request_id);
+    request.set_file_name(file_name);
+    request.set_content(content);
+    PutFileResponse response;
+    brpc::Controller cntl;
+    stub.PutFile(&cntl, &request, &response, nullptr);
+    if (cntl.Failed() || !response.success()) {
+        IM_ERROR("{} upload file failed", request_id);
+        return false;
+    }
+    file_id = response.file_id();
+    return true;
 }
 
 } // namespace im
@@ -154,6 +217,7 @@ int main(int argc, char* argv[]) {
 
     auto channels = std::make_shared<im::ServiceManager>(FLAGS_service_base);
     channels->follow(FLAGS_user_service);
+    channels->follow(FLAGS_file_service);
     auto discovery = std::make_shared<im::Discovery>(
         FLAGS_etcd_host, FLAGS_service_base,
         [channels](const std::string& key, const std::string& host) {
@@ -163,7 +227,8 @@ int main(int argc, char* argv[]) {
             channels->onServiceOffline(key, host);
         });
 
-    auto consumer = std::make_shared<im::MessageConsumer>(db, es, mq, FLAGS_mq_queue);
+    auto consumer = std::make_shared<im::MessageConsumer>(
+        db, es, mq, FLAGS_mq_queue, channels, FLAGS_file_service);
     consumer->start();
 
     brpc::Server server;
