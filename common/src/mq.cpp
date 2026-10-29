@@ -16,7 +16,7 @@ namespace im {
  */
 MQClient::MQClient(const std::string& user, const std::string& password,
                    const std::string& host) {
-    loop_ = EV_DEFAULT;
+    loop_ = ev_loop_new(0);
     handler_ = std::make_unique<AMQP::LibEvHandler>(loop_);
 
     const std::string url = "amqp://" + user + ":" + password + "@" + host + "/";
@@ -43,6 +43,10 @@ MQClient::~MQClient() {
     }
     if (loop_thread_.joinable()) {
         loop_thread_.join();
+    }
+    if (loop_ != nullptr) {
+        ev_loop_destroy(loop_);
+        loop_ = nullptr;
     }
 }
 
