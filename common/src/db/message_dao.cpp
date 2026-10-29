@@ -76,4 +76,21 @@ std::vector<Message> MessageDao::range(const std::string& session_id,
     return result;
 }
 
+/**
+ * @brief 实现按 message_id 查询。
+ */
+std::shared_ptr<Message> MessageDao::findById(const std::string& message_id) {
+    try {
+        odb::transaction trans(db_->begin());
+        typedef odb::query<Message> query;
+        std::shared_ptr<Message> message(
+            db_->query_one<Message>(query::message_id == message_id));
+        trans.commit();
+        return message;
+    } catch (const std::exception& e) {
+        IM_ERROR("query message {} failed: {}", message_id, e.what());
+        return nullptr;
+    }
+}
+
 } // namespace im
