@@ -133,7 +133,7 @@ bool ESClient::indexMessage(const std::string& message_id,
     };
 
     auto response = cpr::Put(
-        cpr::Url{base_url_ + "/" + index_ + "/_doc/" + message_id + "?refresh=true"},
+        cpr::Url{base_url_ + "/" + index_ + "/_doc/" + message_id},
         cpr::Body{doc.dump()},
         cpr::Header{{"Content-Type", "application/json"}},
         cpr::Timeout{3000});
