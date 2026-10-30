@@ -20,6 +20,15 @@ struct ESUserDoc {
     std::string nickname;
 };
 
+/// 批量索引的一条消息
+struct ESMessageIndex {
+    std::string message_id;
+    std::string session_id;
+    std::string sender_id;
+    std::string content;
+    int64_t created_at;
+};
+
 /// 消息索引搜索结果（只取 id，详情回 MySQL 查）
 struct ESMessageDoc {
     std::string message_id;
@@ -72,6 +81,11 @@ public:
                       const std::string& sender_id,
                       const std::string& content,
                       int64_t created_at);
+
+    /**
+     * @brief 批量写入消息文档（_bulk，NDJSON）。
+     */
+    bool bulkIndexMessages(const std::vector<ESMessageIndex>& docs);
 
     /**
      * @brief 在指定会话内按关键字搜索消息。
